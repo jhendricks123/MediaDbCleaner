@@ -25,6 +25,7 @@ namespace MediaDbCleaner
             if (!Directory.Exists(opts.BankPath))
             {
                 Logger.Instance.Log($"Directory does not exist: {opts.BankPath}. For paths with spaces in the name, surround the value with quotes.");
+                Stop();
                 return;
             }
 
@@ -32,7 +33,7 @@ namespace MediaDbCleaner
             var deleteTask = Task.Run(() => DeleteDirtyTables(opts.ListOnly));
             deleteTask.Wait();
             Logger.Instance.Log("Operation completed.");
-            Logger.Instance.Close();
+            Stop();
         }
 
         private static void EnumerateTables(Options opts)
@@ -54,24 +55,6 @@ namespace MediaDbCleaner
             finally
             {
                 DirtyTables.CompleteAdding();
-            }
-        }
-
-        private static void DeleteDirtyTables(bool listOnly)
-        {
-            foreach (var dirtyTable in DirtyTables.GetConsumingEnumerable())
-            {
-                if (listOnly) continue;
-                try
-                {
-                    Logger.Instance.Log($"Deleting table '{dirtyTable.Name}'");
-                    dirtyTable.Delete(true);
-                    Logger.Instance.Log($"Successfully deleted table '{dirtyTable.Name}'");
-                }
-                catch (Exception ex)
-                {
-                    Logger.Instance.Log($"Failed to delete {dirtyTable.FullName}. Error: {ex.Message}");
-                }
             }
         }
 
@@ -104,6 +87,30 @@ namespace MediaDbCleaner
             }
 
             return false;
+        }
+
+        private static void DeleteDirtyTables(bool listOnly)
+        {
+            foreach (var dirtyTable in DirtyTables.GetConsumingEnumerable())
+            {
+                if (listOnly) continue;
+                try
+                {
+                    Logger.Instance.Log($"Deleting table '{dirtyTable.Name}'");
+                    dirtyTable.Delete(true);
+                    Logger.Instance.Log($"Successfully deleted table '{dirtyTable.Name}'");
+                }
+                catch (Exception ex)
+                {
+                    Logger.Instance.Log($"Failed to delete {dirtyTable.FullName}. Error: {ex.Message}");
+                }
+            }
+        }
+
+        private static void Stop()
+        {
+            Logger.Instance.Log("Stopping. . .");
+            Logger.Instance.Close();
         }
     }
 }
