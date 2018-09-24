@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Xml.Schema;
 
 namespace MediaDbCleaner
 {
@@ -23,10 +24,28 @@ namespace MediaDbCleaner
 
         public async Task Clean()
         {
+            if (!Validate()) return; 
             var deleteTask = DeleteDirtyTables();
             await EnumerateTables();
             await deleteTask;
             Logger.Instance.Log("Operation completed.");
+        }
+
+        private bool Validate()
+        {
+            if (!_tableNameRegex.IsMatch(_bank.Name))
+            {
+                Logger.Instance.Log($"Path is not a media database bank. Path: {_bank.FullName}");
+                return false;
+            }
+
+            if (!File.Exists(Path.Combine(_bank.FullName, "config.xml")))
+            {
+                Logger.Instance.Log($"Expected to find 'config.xml' in {_bank.FullName}. If this file is missing, it may indicate an incorrect media database bank path. Path: {_bank.FullName}");
+                return false;
+            }
+
+            return true;
         }
 
         private async Task EnumerateTables()
@@ -90,7 +109,11 @@ namespace MediaDbCleaner
             {
                 foreach (var dirtyTable in _dirtyTables.GetConsumingEnumerable())
                 {
-                    if (_readOnly) continue;
+                    if (_readOnly)
+                    {
+                        Logger.Instance.Log($"Table {dirtyTable.Name} would be deleted if not running with --listonly flag");
+                        continue;
+                    }
                     try
                     {
                         Logger.Instance.Log($"Deleting table '{dirtyTable.Name}'");

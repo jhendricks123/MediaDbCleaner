@@ -20,7 +20,7 @@ namespace MediaDbCleaner
                 Stop();
                 return;
             }
-            var cleaner = new BankCleaner(opts.BankPath);
+            var cleaner = new BankCleaner(opts.BankPath, opts.ListOnly);
             cleaner.Clean().Wait();
             Stop();
         }
